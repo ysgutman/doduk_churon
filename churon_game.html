@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도덕 추론 탐정 게임 🕵️‍♂️</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 { color: #2c3e50; }
+        .question-box {
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            text-align: left;
+            line-height: 1.6;
+        }
+        .options-container { text-align: left; margin-bottom: 20px; }
+        .option-label {
+            display: block;
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .option-label:hover { border-color: #3498db; background-color: #f1f9ff; }
+        input[type="radio"], input[type="checkbox"] { margin-right: 10px; transform: scale(1.2); }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn:hover { background-color: #2980b9; }
+        #feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 1.1em;
+            min-height: 25px;
+        }
+        .correct { color: #27ae60; }
+        .incorrect { color: #e74c3c; }
+        #score-board { font-size: 1.2em; margin-bottom: 15px; color: #7f8c8d; }
+        .hint-text { font-size: 0.85em; color: #d35400; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h1>🕵️‍♂️ 도덕 추론 탐정 게임</h1>
+    <div id="score-board">진행도: <span id="current-q">1</span> / 10</div>
+    
+    <div id="quiz-area">
+        <div id="question" class="question-box">문제가 여기에 표시됩니다.</div>
+        <div id="options" class="options-container"></div>
+        <button id="submit-btn" class="btn" onclick="checkAnswer()">정답 확인</button>
+        <button id="next-btn" class="btn" onclick="nextQuestion()" style="display:none;">다음 문제 ➔</button>
+        <div id="feedback"></div>
+    </div>
+
+    <div id="result-area" style="display:none;">
+        <h2>🎉 게임 종료!</h2>
+        <p id="final-score" style="font-size: 1.5em;"></p>
+        <button class="btn" onclick="location.reload()">다시 도전하기</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        {
+            type: "radio",
+            q: "<b>[도덕원리 찾기]</b> 다음 빈칸에 들어갈 알맞은 도덕원리는 무엇일까요?<br><br><b>사실판단:</b> 철수는 거짓말을 했다.<br><b>도덕원리:</b> ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )<br><b>결론:</b> 따라서, 철수의 행동은 나쁘다.",
+            options: ["거짓말을 하면 코가 길어진다.", "거짓말을 하는 것은 나쁘다.", "철수는 중학생이다.", "모든 사람은 실수를 한다."],
+            answer: [1]
+        },
+        {
+            type: "checkbox",
+            q: "<b>[판단 분류하기]</b> 다음 문장은 어떤 판단에 해당할까요? 해당하는 것을 <b>모두</b> 고르세요.<br><br><i>\"친구를 괴롭히는 것은 옳지 않다.\"</i><br><br><span class='hint-text'>💡 힌트: 모든 도덕판단은 가치판단에 속합니다. 도덕판단이라면 가치판단도 함께 눌러야 완벽한 정답입니다!</span>",
+            options: ["사실판단", "가치판단", "도덕판단"],
+            answer: [1, 2]
+        },
+        {
+            type: "radio",
+            q: "<b>[사실판단 찾기]</b> 이번엔 사실판단을 찾아보세요!<br><br><b>도덕원리:</b> 남의 물건을 훔치는 것은 나쁘다.<br><b>사실판단:</b> ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )<br><b>결론:</b> 영희의 행동은 나쁘다.",
+            options: ["영희는 어제 남의 지우개를 훔쳤다.", "영희는 그림을 잘 그린다.", "도둑질은 범죄이다.", "영희의 행동은 착하다."],
+            answer: [0]
+        },
+        {
+            type: "checkbox",
+            q: "<b>[판단 분류하기]</b> 다음 문장은 어떤 판단일까요? 해당하는 것을 <b>모두</b> 고르세요.<br><br><i>\"대한민국의 수도는 서울이다.\"</i>",
+            options: ["사실판단", "가치판단", "도덕판단"],
+            answer: [0]
+        },
+        {
+            type: "radio",
+            q: "<b>[결론 찾기]</b> 3단 논법을 완성해 보세요!<br><br><b>도덕원리:</b> 쓰레기를 함부로 버리는 것은 옳지 않다.<br><b>사실판단:</b> 민수는 길거리에 과자 봉지를 버렸다.<br><b>결론:</b> 따라서, ( &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; )",
+            options: ["민수는 과자를 좋아한다.", "쓰레기통은 길거리에 있어야 한다.", "민수의 행동은 옳지 않다.", "과자 봉지는 플라스틱이다."],
+            answer: [2]
+        },
+        {
+            type: "checkbox",
+            q: "<b>[판단 분류하기]</b> 다음 문장은 어떤 판단일까요? 해당하는 것을 <b>모두</b> 고르세요.<br><br><i>\"내가 제일 좋아하는 음식은 떡볶이야! 정말 맛있어.\"</i><br><br><span class='hint-text'>💡 힌트: 개인의 취향이나 좋고 나쁨을 나타내지만, 인격이나 도덕적 옳고 그름을 따지는 것은 아닙니다.</span>",
+            options: ["사실판단", "가치판단", "도덕판단"],
+            answer: [1]
+        },
+        {
+            type: "radio",
+            q: "<b>[개념 이해]</b> 객관적으로 확인이 가능하며, 참과 거짓을 분명하게 가릴 수 있는 판단을 무엇이라고 하나요?",
+            options: ["도덕원리", "사실판단", "가치판단", "감정표현"],
+            answer: [1]
+        },
+        {
+            type: "radio",
+            q: "<b>[개념 이해]</b> 구체적인 행동이 옳은지 그른지 판단할 때 사용하는 <b>'일반적인 기준이나 규칙'</b>을 무엇이라고 부르나요?",
+            options: ["도덕원리", "사실판단", "법률", "결론"],
+            answer: [0]
+        },
+        {
+            type: "checkbox",
+            q: "<b>[판단 분류하기]</b> 마지막 분류 문제입니다! 해당하는 것을 <b>모두</b> 고르세요.<br><br><i>\"어려움에 처한 사람을 돕는 것은 마땅히 해야 할 의무이다.\"</i>",
+            options: ["사실판단", "가치판단", "도덕판단"],
+            answer: [1, 2]
+        },
+        {
+            type: "radio",
+            q: "<b>[종합 문제]</b> 올바른 도덕 추론이 이루어지기 위해 필요한 두 가지 핵심 전제는 무엇일까요?",
+            options: ["사실판단 + 가치판단", "도덕원리 + 사실판단", "결론 + 사실판단", "도덕원리 + 가치판단"],
+            answer: [1]
+        }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    function loadQuestion() {
+        const q = questions[currentQuestionIndex];
+        document.getElementById('question').innerHTML = q.q;
+        document.getElementById('current-q').innerText = currentQuestionIndex + 1;
+        document.getElementById('feedback').innerText = "";
+        document.getElementById('submit-btn').style.display = "inline-block";
+        document.getElementById('next-btn').style.display = "none";
+        
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = "";
+        
+        q.options.forEach((opt, index) => {
+            const label = document.createElement('label');
+            label.className = 'option-label';
+            
+            const input = document.createElement('input');
+            input.type = q.type;
+            input.name = "option";
+            input.value = index;
+            
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(opt));
+            optionsDiv.appendChild(label);
+        });
+    }
+
+    function checkAnswer() {
+        const q = questions[currentQuestionIndex];
+        const inputs = document.querySelectorAll(`input[name="option"]:checked`);
+        let selectedValues = Array.from(inputs).map(input => parseInt(input.value)).sort();
+        let correctAnswers = q.answer.slice().sort();
+        
+        if (selectedValues.length === 0) {
+            alert("답을 선택해주세요!");
+            return;
+        }
+
+        const isCorrect = JSON.stringify(selectedValues) === JSON.stringify(correctAnswers);
+        const feedbackDiv = document.getElementById('feedback');
+
+        if (isCorrect) {
+            feedbackDiv.innerHTML = "<span class='correct'>정답입니다! 🎉</span>";
+            score++;
+        } else {
+            let explanation = "";
+            if (q.type === "checkbox" && JSON.stringify(correctAnswers) === JSON.stringify([1, 2])) {
+                explanation = " (도덕판단은 가치판단의 한 종류이므로 둘 다 선택해야 합니다!)";
+            }
+            feedbackDiv.innerHTML = `<span class='incorrect'>틀렸습니다. 아쉽네요!${explanation}</span>`;
+        }
+
+        // 체크박스 비활성화
+        document.querySelectorAll(`input[name="option"]`).forEach(input => input.disabled = true);
+        
+        document.getElementById('submit-btn').style.display = "none";
+        document.getElementById('next-btn').style.display = "inline-block";
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < questions.length) {
+            loadQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-area').style.display = "none";
+        document.getElementById('result-area').style.display = "block";
+        document.getElementById('score-board').style.display = "none";
+        
+        const finalScoreText = `당신의 점수는 10점 만점에 <b>${score}점</b> 입니다!`;
+        document.getElementById('final-score').innerHTML = finalScoreText;
+    }
+
+    // 초기 질문 로드
+    window.onload = loadQuestion;
+</script>
+
+</body>
+</html>

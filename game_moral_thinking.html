@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>판단 구별하기 게임</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .game-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        .instruction {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            background-color: #fff3cd;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .question-box {
+            font-size: 20px;
+            font-weight: bold;
+            color: #34495e;
+            background-color: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            word-break: keep-all;
+        }
+        .options {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .option-label {
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            transition: 0.2s;
+            user-select: none;
+        }
+        .option-label:hover {
+            background-color: #d5dbdb;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .feedback {
+            margin-top: 15px;
+            font-size: 15px;
+            font-weight: bold;
+            min-height: 40px;
+        }
+        .correct { color: #27ae60; }
+        .incorrect { color: #c0392b; }
+        .score-board {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #8e44ad;
+            font-weight: bold;
+        }
+        #next-btn {
+            display: none;
+            background-color: #2ecc71;
+            margin: 15px auto 0;
+        }
+        #next-btn:hover { background-color: #27ae60; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <h1>🎯 사실·가치·도덕 판단 게임</h1>
+    <div class="instruction">
+        문장을 읽고 해당하는 판단을 <b>모두</b> 체크하세요.<br>
+        <span style="color:#e74c3c; font-weight:bold;">※ 주의: 모든 도덕판단은 가치판단에 속합니다. 도덕판단인 경우 '가치판단'과 '도덕판단'을 모두 체크해야 정답입니다!</span>
+    </div>
+    
+    <div>문제 <span id="current-q">1</span> / 10</div>
+    <div class="question-box" id="question-text">문제가 여기에 표시됩니다.</div>
+
+    <div class="options">
+        <label class="option-label"><input type="checkbox" value="fact" class="answer-check"> 사실판단</label>
+        <label class="option-label"><input type="checkbox" value="value" class="answer-check"> 가치판단</label>
+        <label class="option-label"><input type="checkbox" value="moral" class="answer-check"> 도덕판단</label>
+    </div>
+
+    <button id="submit-btn" onclick="checkAnswer()">정답 확인</button>
+    <button id="next-btn" onclick="nextQuestion()">다음 문제</button>
+
+    <div class="feedback" id="feedback-text"></div>
+    <div class="score-board">현재 점수: <span id="score">0</span>점</div>
+</div>
+
+<script>
+    const questions = [
+        // 쉬운 난이도
+        { q: "대한민국의 수도는 서울이다.", a: ["fact"], exp: "객관적으로 참/거짓을 확인할 수 있는 '사실판단'이에요." },
+        { q: "이 떡볶이는 정말 맵고 맛있다.", a: ["value"], exp: "개인의 취향이나 주관적 느낌을 나타내는 '가치판단'이에요." },
+        { q: "친구를 괴롭히는 것은 나쁜 행동이다.", a: ["value", "moral"], exp: "인품이나 행위의 옳고 그름을 평가하므로 '도덕판단'이며, 동시에 '가치판단'이기도 해요!" },
+        { q: "물은 1기압, 100도에서 끓는다.", a: ["fact"], exp: "과학적으로 증명할 수 있는 '사실판단'이에요." },
+        // 중간 난이도
+        { q: "가을은 독서하기에 가장 좋은 계절이다.", a: ["value"], exp: "사람마다 다르게 생각할 수 있는 주관적인 평가이므로 '가치판단'이에요." },
+        { q: "남의 물건을 훔치는 것은 옳지 않다.", a: ["value", "moral"], exp: "도덕적인 가치를 담고 있으므로 '도덕판단'과 '가치판단' 모두 체크해야 해요!" },
+        { q: "지구는 태양 주위를 돈다.", a: ["fact"], exp: "관찰과 증명을 통해 알 수 있는 명백한 '사실판단'이에요." },
+        // 어려운 난이도
+        { q: "이 영화의 결말은 주인공의 성장을 잘 보여주어 훌륭하다.", a: ["value"], exp: "예술 작품에 대한 평가는 도덕적 옳고 그름이 아닌, 미적/주관적 평가이므로 단순 '가치판단'이에요." },
+        { q: "자신의 이익을 위해 타인에게 거짓말을 해서는 안 된다.", a: ["value", "moral"], exp: "당위성(~해야 한다, ~해서는 안 된다)을 나타내는 '도덕판단'이자 '가치판단'이에요." },
+        { q: "우리나라 형법에서는 절도를 범죄로 처벌하고 있다.", a: ["fact"], exp: "속기 쉬운 문제예요! '법에 그렇게 적혀있다'는 객관적 사실을 말하고 있으므로 '사실판단'입니다." }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+
+    const questionText = document.getElementById("question-text");
+    const currentQSpan = document.getElementById("current-q");
+    const checkboxes = document.querySelectorAll(".answer-check");
+    const feedbackText = document.getElementById("feedback-text");
+    const submitBtn = document.getElementById("submit-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const scoreSpan = document.getElementById("score");
+
+    function loadQuestion() {
+        const q = questions[currentQuestionIndex];
+        questionText.innerText = q.q;
+        currentQSpan.innerText = currentQuestionIndex + 1;
+        feedbackText.innerText = "";
+        feedbackText.className = "feedback";
+        submitBtn.style.display = "inline-block";
+        submitBtn.disabled = false;
+        nextBtn.style.display = "none";
+        checkboxes.forEach(cb => cb.checked = false);
+    }
+
+    function checkAnswer() {
+        const userAnswers = Array.from(checkboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value)
+            .sort();
+        
+        const correctAnswers = [...questions[currentQuestionIndex].a].sort();
+
+        // 선택을 아예 안 한 경우
+        if (userAnswers.length === 0) {
+            feedbackText.innerText = "답을 하나 이상 체크해 주세요!";
+            feedbackText.className = "feedback incorrect";
+            return;
+        }
+
+        const isCorrect = JSON.stringify(userAnswers) === JSON.stringify(correctAnswers);
+
+        if (isCorrect) {
+            score += 10;
+            scoreSpan.innerText = score;
+            feedbackText.innerHTML = `🎉 정답입니다! <br><span style='font-size:13px; font-weight:normal;'>${questions[currentQuestionIndex].exp}</span>`;
+            feedbackText.className = "feedback correct";
+        } else {
+            // 도덕 판단을 골랐으나 가치를 안 고른 경우 특별한 피드백
+            if (correctAnswers.includes("moral") && userAnswers.includes("moral") && !userAnswers.includes("value")) {
+                feedbackText.innerHTML = `😢 아쉽네요! <br><span style='font-size:13px; font-weight:normal;'>모든 도덕판단은 가치판단이기도 해요. 가치판단도 같이 체크해야 정답이에요!</span>`;
+            } else {
+                feedbackText.innerHTML = `❌ 틀렸습니다! <br><span style='font-size:13px; font-weight:normal;'>${questions[currentQuestionIndex].exp}</span>`;
+            }
+            feedbackText.className = "feedback incorrect";
+        }
+
+        submitBtn.style.display = "none";
+        nextBtn.style.display = "inline-block";
+        checkboxes.forEach(cb => cb.disabled = true); // 중복 선택 방지
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        checkboxes.forEach(cb => cb.disabled = false); // 체크박스 활성화
+
+        if (currentQuestionIndex < questions.length) {
+            loadQuestion();
+        } else {
+            questionText.innerHTML = `게임 종료! 👏<br>당신의 최종 점수는 100점 만점에 <b style="color:#e74c3c;">${score}점</b>입니다!`;
+            document.querySelector('.options').style.display = "none";
+            submitBtn.style.display = "none";
+            nextBtn.style.display = "none";
+            feedbackText.innerText = "";
+            
+            // 다시하기 버튼 생성
+            const restartBtn = document.createElement("button");
+            restartBtn.innerText = "처음부터 다시하기";
+            restartBtn.onclick = () => location.reload();
+            document.querySelector('.game-container').appendChild(restartBtn);
+        }
+    }
+
+    // 초기 문제 로드
+    loadQuestion();
+</script>
+
+</body>
+</html>
